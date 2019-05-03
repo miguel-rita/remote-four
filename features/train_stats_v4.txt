@@ -1,0 +1,6 @@
+mean
+ptp
+abs_mean
+std
+abs_max
+kurtosis

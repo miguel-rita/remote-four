@@ -1,0 +1,3 @@
+mean_abs_delta
+std_abs_delta
+kurt_abs_delta

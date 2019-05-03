@@ -1,0 +1,14 @@
+abs_mean
+std
+abs_max
+kurtosis
+fft_coef_0
+fft_coef_1
+fft_coef_2
+fft_coef_3
+fft_coef_4
+fft_coef_5
+fft_coef_6
+fft_coef_7
+fft_coef_8
+fft_coef_9

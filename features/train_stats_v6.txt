@@ -1,0 +1,3 @@
+mean
+std
+kurtosis

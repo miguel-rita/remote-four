@@ -11,10 +11,12 @@ def main():
 
     # Select relevant cached features
     train_feats_list = [
-        '../features/train_stats_v2.h5',
+        '../features/train_stats_v8_x3.h5',
+        '../features/train_delta_v8_x3.h5',
     ]
     test_feats_list = [
-        '../features/test_stats_v2.h5',
+        '../features/test_stats_v8.h5',
+        '../features/test_delta_v8.h5',
     ]
 
     train, test, y_tgt = prepare_datasets(train_feats_list, test_feats_list)
@@ -24,21 +26,19 @@ def main():
         'lgbm-models'   : bool(1),
     }
 
-    feat_blacklist = [
-        # 'skew',
-    ]
+    feat_blacklist = ['mean']
 
     '''
     LGBM Models
     '''
 
     seed = 42
-    model_name = f'm0_v2'
+    model_name = f'm0_v5'
 
     if controls['lgbm-models']:
 
         lgbm_params = {
-            'num_leaves' : 8,
+            'num_leaves' : 4,
             'learning_rate': 0.5,
             'min_child_samples' : 30,
             'n_estimators': 100,
@@ -64,8 +64,8 @@ def main():
 
         lgbm_model_0.fit_predict(
             iteration_name=model_name,
-            predict_test=True,
-            save_preds=False,
+            predict_test=False,
+            save_preds=True,
             produce_sub=True,
             save_imps=True,
             save_aux_visu=False,

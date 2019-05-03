@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import glob
+import glob, time, datetime
 from numba import jit
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -96,10 +96,10 @@ def run_generate_train():
     train_df, tgt = generate_train(
         signal=np.load('../data/signal.npy'),
         ttf_rec=np.load('../data/ttf_rec.npy'),
-        chunksize=150010
+        chunksize=450030#150010
     )
-    train_df.to_hdf('../data/train_df.h5', key='train_df', mode='w')
-    np.save('../data/target.npy', tgt)
+    train_df.to_hdf('../data/train_df_x3.h5', key='train_df', mode='w')
+    np.save('../data/target_x3.npy', tgt)
 
 def generate_test(test_dir):
     '''
@@ -142,15 +142,15 @@ def prepare_datasets(train_feats_list, test_feats_list):
     test_feats_df = pd.concat(test_feats_dfs, axis=1)
 
     # Read metadata target for train set
-    y_target = np.load('../data/target.npy')
+    y_target = np.load('../data/target_x3.npy')
 
-    ttf_rec = np.load('../data/ttf_rec.npy')
-    ttf_rec[:,0] = ttf_rec[:,0] * y_target.size / ttf_rec[-1,0]
-    final_ixs = np.arange(ttf_rec[-1, 0])
-    final_ixs_2 = final_ixs[(final_ixs < ttf_rec[9, 0]) | (final_ixs >= ttf_rec[13, 0])]
-    final_ixs_2 = final_ixs_2.astype(int)
+    # ttf_rec = np.load('../data/ttf_rec.npy')
+    # ttf_rec[:,0] = ttf_rec[:,0] * y_target.size / ttf_rec[-1,0]
+    # final_ixs = np.arange(ttf_rec[-1, 0])
+    # final_ixs_2 = final_ixs[(final_ixs < ttf_rec[9, 0]) | (final_ixs >= ttf_rec[13, 0])]
+    # final_ixs_2 = final_ixs_2.astype(int)
 
-    return train_feats_df.iloc[final_ixs_2, :], test_feats_df, y_target[final_ixs_2]
+    return train_feats_df, test_feats_df, y_target
 
 def plot_aux_visu():
     # TODO
@@ -159,11 +159,14 @@ def plot_aux_visu():
 def save_importances(imps_, filename_):
     mean_gain = imps_[['gain', 'feat']].groupby('feat').mean().reset_index()
     mean_gain.index.name = 'feat'
-    plt.figure(figsize=(6, 17))
+    plt.figure(figsize=(6, 1*mean_gain.shape[0]))
     sns.barplot(x='gain', y='feat', data=mean_gain.sort_values('gain', ascending=False))
     plt.title(f'Num. feats = {mean_gain.shape[0]:d}')
     plt.tight_layout()
-    plt.savefig(filename_+'.png')
+
+    # Timestamp
+    ts = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
+    plt.savefig(f'{filename_}_{ts}.png')
     plt.clf()
 
 def save_submission(test_preds_df, sub_name, postprocess):
@@ -175,13 +178,16 @@ def save_submission(test_preds_df, sub_name, postprocess):
     test_preds_df = test_preds_df.reset_index(drop=False)
     test_preds_df.columns = ['seg_id', 'time_to_failure']
 
+    # Sort sub to match sample sub
+    test_preds_df.sort_values(by='seg_id', inplace=True)
+
     # Save sub
     test_preds_df.to_csv(f'../submissions/{sub_name}', index=False)
 
 def main():
     # run_build_interp()
     # run_generate_test()
-    # run_generate_train()
+    run_generate_train()
     pass
 
 if __name__ == '__main__':

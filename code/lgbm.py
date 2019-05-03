@@ -74,6 +74,7 @@ class LgbmModel:
                 learning_rate=self.fit_params['learning_rate'],
                 n_estimators=self.fit_params['n_estimators'],
                 objective='mae',
+                # alpha=0.5,
                 reg_lambda=self.fit_params['reg_lambda'],
                 min_child_samples=self.fit_params['min_child_samples'],
                 silent=self.fit_params['silent'],
@@ -116,14 +117,10 @@ class LgbmModel:
         print(pd.Series(eval_metrics).describe())
 
         np.save('../other/y_oof_.npy', y_oof)
-        np.save('../other/y_pred_.npy', y_test)
         np.save('../other/y_tgt_.npy', self.y_tgt)
-        print('> lgbm : Postprocessed CV : ')
-        asort = np.argsort(y_oof)
-        unsort = np.argsort(asort)
-        sorted_tgt = np.sort(self.y_tgt)
-        new_oof = self.y_tgt[unsort]
-        print(mean_absolute_error(self.y_tgt, new_oof))
+
+        if predict_test:
+            np.save('../other/y_pred_.npy', y_test)
 
         '''
         Output wrap-up : save importances, predictions (oof and test), submission and others
@@ -137,7 +134,8 @@ class LgbmModel:
         else:
             final_name = f'lgbm_{iteration_name}_{final_metric:.4f}'
 
-        test_preds_df = pd.DataFrame(data=y_test[:, None], columns=[final_name], index=self.test.index)
+        if predict_test:
+            test_preds_df = pd.DataFrame(data=y_test[:, None], columns=[final_name], index=self.test.index)
 
         if save_imps:
             save_importances(imps, filename_='../importances/imps_' + final_name)
