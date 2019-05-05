@@ -96,10 +96,10 @@ def run_generate_train():
     train_df, tgt = generate_train(
         signal=np.load('../data/signal.npy'),
         ttf_rec=np.load('../data/ttf_rec.npy'),
-        chunksize=450030#150010
+        chunksize=150010
     )
-    train_df.to_hdf('../data/train_df_x3.h5', key='train_df', mode='w')
-    np.save('../data/target_x3.npy', tgt)
+    train_df.to_hdf('../data/train_df_rem.h5', key='train_df', mode='w')
+    np.save('../data/target_rem.npy', tgt)
 
 def generate_test(test_dir):
     '''
@@ -142,7 +142,7 @@ def prepare_datasets(train_feats_list, test_feats_list):
     test_feats_df = pd.concat(test_feats_dfs, axis=1)
 
     # Read metadata target for train set
-    y_target = np.load('../data/target_x3.npy')
+    y_target = np.load('../data/target.npy')
 
     # ttf_rec = np.load('../data/ttf_rec.npy')
     # ttf_rec[:,0] = ttf_rec[:,0] * y_target.size / ttf_rec[-1,0]

@@ -4,6 +4,7 @@ import multiprocessing as mp
 import tqdm, glob, time, pickle, re
 from scipy.stats import skew, kurtosis
 from scipy.fftpack import rfft
+from scipy.signal import find_peaks, peak_widths
 
 def atomic_worker(args):
 
@@ -25,12 +26,11 @@ def atomic_worker(args):
 
         # Feature names
         stats_feats_names = [
-            'std',
             'kurtosis',
         ]
 
         stats_feats_arr = np.hstack([
-            np.std(arr, axis=1, keepdims=True),
+            # np.std(arr, axis=1, keepdims=True),
             kurtosis(arr, axis=1)[:, None],
         ])
 
@@ -73,6 +73,49 @@ def atomic_worker(args):
         feat_arrays.append(arr_)
 
     '''
+    Peak features
+    '''
+    if compute_feats['peak-feats']:
+
+        min_heights = [35]
+
+        # Feature names
+        names = []
+        for n in min_heights:
+            names.extend([
+                f'num_peaks_{n:d}',
+            ])
+
+        nfeats = len(names)
+        arr_ = np.zeros(shape=(arr.shape[0], nfeats))
+
+        # Process peaks per chunk
+        for i, signal in tqdm.tqdm(enumerate(arr), total=arr.shape[0]):
+
+            # Get positive and negative peaks
+            pos_peak_ixs, pos_peak_props = find_peaks(signal, height=np.min(min_heights))
+            neg_peak_ixs, neg_peak_props = find_peaks(-signal, height=np.min(min_heights))
+
+            pos_peak_heights = pos_peak_props['peak_heights']
+            neg_peak_heights = -neg_peak_props['peak_heights']
+
+            # Combine and sort all peaks
+            peak_ixs = np.hstack([pos_peak_ixs, neg_peak_ixs])
+            peak_heights = np.hstack([pos_peak_heights, neg_peak_heights])
+            sort_order = np.argsort(peak_ixs)
+            peak_ixs = peak_ixs[sort_order]
+            peak_heights = peak_heights[sort_order]
+            abs_peak_heights = np.abs(peak_heights[sort_order])
+
+            for j, min_h in enumerate(min_heights):
+
+                # Num. peaks
+                arr_[i, j] = abs_peak_heights[abs_peak_heights >= min_h].size
+
+        feat_names.extend(names)
+        feat_arrays.append(arr_)
+
+    '''
     Aggregate all feats and return as df
     '''
     # Build final pandas dataframe
@@ -108,7 +151,7 @@ def gen_feats(save_rel_dir, save_name, source_df_dir, compute_feats):
 
     print(f'> feature_engineering : Creating mp pool . . .')
 
-    pool = mp.Pool(processes=3)#mp.cpu_count()-4)
+    pool = mp.Pool(processes=6)#mp.cpu_count()-4)
     res = pool.map(atomic_worker, atomic_args)
     pool.close()
     pool.join()
@@ -127,19 +170,21 @@ def gen_feats(save_rel_dir, save_name, source_df_dir, compute_feats):
         pickle.dump(feat_list, f2, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-dataset = 'train'
+dataset = 'test'
 st = time.time()
 
 compute_feats_template = {
     'stats-feats': bool(0),
     'fourier-feats': bool(0),
     'delta-feats': bool(0),
+    'peak-feats': bool(0),
 }
 
 feats_to_gen = {
-    'stats-feats': 'stats_v8_x3',
+    'stats-feats': 'stats_v9',
     # 'fourier-feats': 'fourier_v4',
-    'delta-feats': 'delta_v8_x3',
+    'delta-feats': 'delta_v9',
+    'peak-feats': 'peak_v9',
 }
 
 for ft_name, file_name in feats_to_gen.items():
@@ -150,7 +195,7 @@ for ft_name, file_name in feats_to_gen.items():
     gen_feats(
         save_rel_dir='../features',
         save_name=f'{dataset}_{file_name}.h5',
-        source_df_dir=f'../data/{dataset}_df_x3.h5',
+        source_df_dir=f'../data/{dataset}_df.h5',
         compute_feats=cpt_fts,
     )
 
