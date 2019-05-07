@@ -11,14 +11,16 @@ def main():
 
     # Select relevant cached features
     train_feats_list = [
-        '../features/train_stats_v9.h5',
+        # '../features/train_stats_v10.h5',
         '../features/train_delta_v9.h5',
-        '../features/train_peak_v9.h5',
+        # '../features/train_peak_v9.h5',
+        # '../features/train_roll_v9.h5',
     ]
     test_feats_list = [
         '../features/test_stats_v9.h5',
         '../features/test_delta_v9.h5',
         '../features/test_peak_v9.h5',
+        '../features/test_roll_v9.h5',
     ]
 
     train, test, y_tgt = prepare_datasets(train_feats_list, test_feats_list)
@@ -28,7 +30,7 @@ def main():
         'lgbm-models'   : bool(1),
     }
 
-    feat_blacklist = []
+    feat_blacklist = [ 'std_abs_delta', 'std_rolling_std_500', 'kurtosis']
 
     '''
     LGBM Models

@@ -1,4 +1,5 @@
 import numpy as np
+from numba import jit
 import pandas as pd
 import multiprocessing as mp
 import tqdm, glob, time, pickle, re
@@ -26,12 +27,12 @@ def atomic_worker(args):
 
         # Feature names
         stats_feats_names = [
-            'kurtosis',
+            'std',
         ]
 
         stats_feats_arr = np.hstack([
-            # np.std(arr, axis=1, keepdims=True),
-            kurtosis(arr, axis=1)[:, None],
+            np.std(arr, axis=1, keepdims=True),
+            # kurtosis(arr, axis=1)[:, None],
         ])
 
         feat_names.extend(stats_feats_names)
@@ -116,6 +117,37 @@ def atomic_worker(args):
         feat_arrays.append(arr_)
 
     '''
+    Rolling features
+    '''
+    if compute_feats['roll-feats']:
+
+        windows = [500]
+
+        # Feature names
+        names = []
+        for w in windows:
+            names.extend([
+                f'mean_rolling_std_{w:d}',
+            ])
+
+        nfeats = len(names)
+
+        arr_ = np.zeros(shape=(arr.shape[0], nfeats))
+
+        for iw, w in enumerate(windows):
+
+            size = arr.shape[1] - w + 1
+            roll_stds = np.zeros(shape=(arr.shape[0], size))
+            for i in tqdm.tqdm(np.arange(0, size), total=size):
+                roll_stds[:, i] = np.std(arr[:, i:i + w], axis=1)
+
+            arr_[:, iw] = np.mean(roll_stds, axis=1)
+
+        feat_names.extend(names)
+        feat_arrays.append(arr_)
+
+
+    '''
     Aggregate all feats and return as df
     '''
     # Build final pandas dataframe
@@ -151,7 +183,7 @@ def gen_feats(save_rel_dir, save_name, source_df_dir, compute_feats):
 
     print(f'> feature_engineering : Creating mp pool . . .')
 
-    pool = mp.Pool(processes=6)#mp.cpu_count()-4)
+    pool = mp.Pool(processes=8)#mp.cpu_count()-4)
     res = pool.map(atomic_worker, atomic_args)
     pool.close()
     pool.join()
@@ -170,7 +202,7 @@ def gen_feats(save_rel_dir, save_name, source_df_dir, compute_feats):
         pickle.dump(feat_list, f2, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-dataset = 'test'
+dataset = 'train'
 st = time.time()
 
 compute_feats_template = {
@@ -178,13 +210,15 @@ compute_feats_template = {
     'fourier-feats': bool(0),
     'delta-feats': bool(0),
     'peak-feats': bool(0),
+    'roll-feats': bool(0),
 }
 
 feats_to_gen = {
-    'stats-feats': 'stats_v9',
+    'stats-feats': 'stats_v10',
     # 'fourier-feats': 'fourier_v4',
-    'delta-feats': 'delta_v9',
-    'peak-feats': 'peak_v9',
+    # 'delta-feats': 'delta_v9',
+    # 'peak-feats': 'peak_v9',
+    # 'roll-feats': 'roll_v9',
 }
 
 for ft_name, file_name in feats_to_gen.items():
